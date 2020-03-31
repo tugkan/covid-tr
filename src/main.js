@@ -95,9 +95,7 @@ Apify.main(async () => {
 
             const returningData = {
                 infected,
-                tested,
                 deceased,
-                recovered,
                 sourceUrl,
                 lastUpdatedAtApify: new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes())).toISOString(),
                 readMe: 'https://apify.com/tugkan/covid-tr',

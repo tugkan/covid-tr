@@ -87,12 +87,11 @@ Apify.main(async () => {
             log.info('Image processed');
 
             const textResponse = JSON.parse(visionResponse.body).responses[0].fullTextAnnotation.text
-            const textArray = textResponse.split('\n')
 
-            const tested = parseInt(textArray[4].replace(/\D/g,''));
-            const infected = parseInt(textArray[13].replace(/\D/g,''));
-            const deceased = parseInt(textArray[17].replace(/\D/g,''));
-            const recovered = parseInt(textArray[38].replace(/\D/g,''))
+            const textArray = textResponse.split('\n').filter(text => text.match(/^\d+(\.\d+)*$/g))
+
+            const infected = parseInt(textArray[3].replace(/\D/g,''));
+            const deceased = parseInt(textArray[4].replace(/\D/g,''));
 
             const returningData = {
                 infected,

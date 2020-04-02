@@ -4,12 +4,6 @@
   "type": "object",
   "schemaVersion": 1,
   "properties": {
-    "apiKey": {
-      "title": "Google Vision API Key",
-      "description": "Actor uses Google Vision. You need to create an API key from GCLoud Console",
-      "type": "string",
-      "editor": "textfield"
-  }
   },
   "required": ["apiKey"]
 }

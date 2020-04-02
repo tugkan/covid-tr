@@ -1,7 +1,4 @@
 const Apify = require('apify');
-const rp = require('request-fixed-tunnel-agent');
-const base64 = require('base-64');
-
 
 const { log,requestAsBrowser } = Apify.utils;
 const sourceUrl = 'https://covid19.saglik.gov.tr/';
@@ -12,15 +9,6 @@ Apify.main(async () => {
     const kvStore = await Apify.openKeyValueStore('COVID-19-TURKEY');
     const dataset = await Apify.openDataset('COVID-19-TURKEY-HISTORY');
 
-
-    // Get input schema
-    const {apiKey} = await Apify.getInput() || {};
-
-    // API Key validation
-    if(!apiKey){
-        log.error('Google Vision API Key is required');
-        process.exit(1);
-    }
 
     await requestQueue.addRequest({ url: sourceUrl });
     const crawler = new Apify.CheerioCrawler({
@@ -33,74 +21,31 @@ Apify.main(async () => {
             log.info('Page loaded.');
             const now = new Date();
 
-            const dataUrl = 'https://covid19.saglik.gov.tr/' + $('.card-body img[src]').map((i,el) => $(el).attr('src')).get(0);
+            const numbers = $('#bg-logo span[class]')
+                .map((i,el) => $(el).text().trim().replace(/\D/g,''))
+                .get()
+                .filter(text => text.match(/\d/)).map(text => parseInt(text,10));
 
-            log.info('Found image');
+            const tested =numbers[0];
+            const infected=numbers[1];
+            const deceased =numbers[2];
+            const recovered = numbers[5];
 
-            // Download image
-            const response = await rp({
-                url:dataUrl,
-                encoding:null,
-                resolveWithFullResponse:true,
-                proxyUrl: Apify.getApifyProxyUrl({
-                    groups: ['SHADER']
-                })
-            });
-
-            log.info('Image downloaded');
-
-            // Parse to base64
-            const imageData = Buffer.from(response.body).toString('base64');
-
-            // Send to Google vision
-            const visionResponse = await requestAsBrowser({
-                url: `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
-                method: 'POST',
-                payload: JSON.stringify({
-                    "requests": [
-                        {
-                            "image": {
-                                "content": imageData,
-                            },
-                            "features": [{
-                                "type": "TEXT_DETECTION"
-                            }]
-                        }
-                    ]
-                }),
-                apifyProxyGroups:['SHADER'],
-                timeoutSecs: 120,
-                abortFunction: (res) => {
-                    // Status code check
-                    if (!res || res.statusCode !== 200) {
-                        session.markBad();
-                        return true;
-                    }
-                    session.markGood();
-                    return false;
-                },
-            }).catch((err) => {
-                session.markBad();
-                throw new Error(err);
-            });
-
-            log.info('Image processed');
-
-            const textResponse = JSON.parse(visionResponse.body).responses[0].fullTextAnnotation.text
-
-            const textArray = textResponse.split('\n').filter(text => text.match(/^\d+(\.\d+)*$/g))
-
-            const infected = parseInt(textArray[3].replace(/\D/g,''));
-            const deceased = parseInt(textArray[4].replace(/\D/g,''));
+            // Turkish month name map
+            const monthNames = ["OCAK", "ŞUBAT", "MART", "NİSAN", "MAYIS", "HAZİRAN", "TEMMUZ", "AĞUSTOS", "EYLÜL", "EKİM", "KASIM", "ARALIK"];
+            const [day,month,year] = $('.takvim').text().trim().replace(/\s+/g,' ').split(' ');
+            const lastUpdatedParsed = new Date(`${monthNames.indexOf(month)+1}.${day}.${year}`);
 
             const returningData = {
+                tested,
                 infected,
                 deceased,
+                recovered,
                 sourceUrl,
+                lastUpdatedAtSource: lastUpdatedParsed.toISOString(),
                 lastUpdatedAtApify: new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes())).toISOString(),
                 readMe: 'https://apify.com/tugkan/covid-tr',
             };
-
 
             // Compare and save to history
             const latest = await kvStore.getValue(LATEST) || {};

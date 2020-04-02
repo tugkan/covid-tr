@@ -5,5 +5,4 @@
   "schemaVersion": 1,
   "properties": {
   },
-  "required": ["apiKey"]
 }
